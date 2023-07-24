@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+
+# SPDX-FileCopyrightText: The RamenDR authors
+# SPDX-License-Identifier: Apache-2.0
+
+import os
+import sys
+import time
+import shlex
+import io
+import tempfile
+import subprocess as subp
+import os.path as ospa
+import logging
+
+from drenv import kubectl
+from drenv import commands
+
+# Set up logger
+# TODO: move to separate module
+
+# create logger
+logger = logging.getLogger('testenv')
+logger.setLevel(logging.DEBUG)
+
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# add formatter to ch
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
+
+# ---------------------  config params ----------------------------------------------------------
+ROOK_CEPH_NAME_SPACE = 'rook-ceph'
+RAMEN_HACK_DIRECTORY_PATH_NAME = ''
+
+# -----------------------------------------------------------------------------------------
+
+
+class Cluster:
+    def __init__(self, name):
+        self.name = name
+        self.env = Environment()
+
+    def RunCommand(self, cmd):
+        self.env.RunCommand(cmd)
+
+    def RunCommandWithClusterContext(self, cmd):
+        # k8sConfig = ospa.join(RAMEN_HACK_DIRECTORY_PATH_NAME, ''.join([self.name, '.kubeconfig']))
+        k8sConfig = '/home/egershko/.kube/config'
+        self.env.env['KUBECONFIG'] = k8sConfig
+        self.RunCommand(cmd)
+
+    def RookConnectToExternalStorageCluster(self, cluster_details):
+        script_name = ''
+        try:
+            _, script_name = tempfile.mkstemp(prefix='import-external-cluster-', suffix='.sh')
+            subp.run(['curl', '-s', 'https://raw.githubusercontent.com/rook/rook/master/deploy/examples/import-external-cluster.sh', '-o', script_name])
+            logger.info(f'Script downloaded into {script_name}')
+            src = ''
+            with open(script_name) as sf:
+                src = sf.read()
+            src = src.replace("RBD_STORAGE_CLASS_NAME=ceph-rbd", "RBD_STORAGE_CLASS_NAME=rook-ceph-block")
+            src = src.replace("CEPHFS_STORAGE_CLASS_NAME=cephfs", "CEPHFS_STORAGE_CLASS_NAME=rook-ceph-fs")
+            with open(script_name, 'w') as sf:
+                sf.write(src)
+
+            self.env.env['NAMESPACE'] = ROOK_CEPH_NAME_SPACE
+            sf = io.StringIO(cluster_details)
+            for line in cluster_details.split('\n'):
+                if line.startswith('export'):
+                    _, v = line.strip().split(' ')
+                    bits = v.split('=')
+                    k = bits[0]
+                    v = '='.join(bits[1:])
+                    self.env.env[k] = v
+
+            self.RunCommandWithClusterContext(' '.join(['/bin/bash', script_name]))
+
+        except:
+            raise
+        finally:
+            os.unlink(script_name)
+
+    def get_ceph_toolbox_pod_name(self, cluster):
+        return kubectl.get(
+            "pod",
+            "-l app=rook-ceph-tools",
+            "--output=jsonpath={.items[0].metadata.name}",
+            f"--namespace={ROOK_CEPH_NAME_SPACE}",
+            context=cluster
+        )
+
+    def get_rook_ceph_external_cluster_details(self, podname, cluster):
+        try:
+            out = kubectl.exec(
+                podname,
+                f"--namespace={ROOK_CEPH_NAME_SPACE}",
+                "--",
+                "curl",
+                "-o",
+                "/tmp/create-external-cluster-resources.py",
+                "https://raw.githubusercontent.com/rook/rook/master/deploy/examples/create-external-cluster-resources.py",
+                context=cluster
+            )
+        except commands.Error as e:
+            logger.error(f"kubectl.exec failed: {e}")
+            raise
+
+        try:
+            out = kubectl.exec(
+                podname,
+                f"--namespace={ROOK_CEPH_NAME_SPACE}",
+                "--",
+                "python3",
+                "/tmp/create-external-cluster-resources.py",
+                "--format",
+                "bash",
+                "--rbd-data-pool-name",
+                "replicapool",
+                # "--cephfs-filesystem-name",
+                # "cephfs",
+                context=cluster
+            )
+        except commands.Error as e:
+            logger.error(f"kubectl.exec failed: {e}")
+            raise
+
+        return out
+
+
+class Environment:
+    def __init__(self):
+        self.env = {}
+
+    def RunCommand(self, cmd):
+        logger.info(f'Running command \'{cmd}\'')
+        bits = shlex.split(cmd)
+        t0 = time.time()
+        result = subp.run(bits, capture_output=True, encoding='utf-8', env=self.env)
+        elapsed = time.time() - t0
+        self.LogCommand(cmd, result, elapsed)
+        return result
+
+    def LogCommand(self, cmd, cmd_result, elapsed):
+
+        k8sConfigEnv = self.env['KUBECONFIG'] if 'KUBECONFIG' in self.env else 'NOT DEFINED'
+
+        logger.info(f"""
+        =================== Command Runner ===================
+        executed cmd in {elapsed}s, command: {cmd}
+        KUBECONFIG: {k8sConfigEnv}
+        stdout is "{cmd_result.stdout}"
+        stderr is "{cmd_result.stderr}"
+        exitStatus is {cmd_result.returncode}
+        =================== Command Runner ===================
+		
+        """)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} cluster")
+        sys.exit(1)
+
+    os.chdir(os.path.dirname(__file__))
+    cluster = sys.argv[1]
+
+    logger.info(f'Cluster name {cluster}')
+
+    c = Cluster(cluster)
+
+    podname = c.get_ceph_toolbox_pod_name(cluster)
+
+    logger.info(podname)
+    cluster_details = c.get_rook_ceph_external_cluster_details(podname, cluster)
+    logger.debug(cluster_details)
+
+    c.RookConnectToExternalStorageCluster(cluster_details)
