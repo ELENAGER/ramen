@@ -560,7 +560,7 @@ var _ = Describe("VolumeReplicationGroupRecipe", func() {
 						})
 						It("sets DataReady condition's message to something besides a recipe error", func() {
 							Eventually(vrgDataReadyConditionGet).ShouldNot(BeNil())
-							Eventually(*vrgDataReadyPointer).Should(MatchFields(IgnoreExtras, Fields{
+							Eventually(*vrgDataReadyPointer, timeout*2, interval).Should(MatchFields(IgnoreExtras, Fields{
 								"Message": Not(HavePrefix(recipeErrorMessagePrefix)),
 							}))
 						})

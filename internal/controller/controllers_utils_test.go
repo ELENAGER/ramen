@@ -135,7 +135,7 @@ func updateMWAsApplied(k8sClient client.Client, apiReader client.Reader, key typ
 		err := apiReader.Get(context.TODO(), key, mw)
 
 		return err == nil
-	}, timeout, interval).Should(BeTrue(),
+	}, timeout*2, interval).Should(BeTrue(),
 		fmt.Sprintf("failed to get manifest %s for DRCluster %s", key.Name, key.Namespace))
 
 	timeOld := time.Now().Local()

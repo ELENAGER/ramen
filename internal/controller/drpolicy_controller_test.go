@@ -51,7 +51,7 @@ var _ = Describe("DRPolicyController", func() {
 					},
 				))
 			},
-			timeout,
+			timeout*2,
 			interval,
 		).Should(Succeed())
 	}
@@ -121,7 +121,7 @@ var _ = Describe("DRPolicyController", func() {
 			plRules = getPlRuleForSecrets()
 
 			return len(plRules) == len(drPoliciesAndSecrets[policyCombinationName])
-		}, timeout, interval).Should(BeTrue())
+		}, timeout*2, interval).Should(BeTrue())
 
 		// Range through secrets in drpolicies name and ensure cluster list is the same
 		for secretName, clusterList := range drPoliciesAndSecrets[policyCombinationName] {

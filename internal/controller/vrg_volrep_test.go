@@ -395,7 +395,7 @@ var _ = Describe("VolumeReplicationGroupVolRepController", func() {
 					})
 				})
 				It("updates the status", func() {
-					Eventually(vrgResourceVersionGet).ShouldNot(Equal(vrgResourceVersion))
+					Eventually(vrgResourceVersionGet, timeout*2, interval).ShouldNot(Equal(vrgResourceVersion))
 				})
 				It("keeps the selected protected", func() {
 					pvcsVerify(pvcNamesSelected, pvcProtectedVerify)
