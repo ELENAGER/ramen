@@ -94,8 +94,11 @@ func protectedVrgListExpectIncludeOnly(protectedVrgList *ramen.ProtectedVolumeRe
 func protectedVrgListExpectInclude(protectedVrgList *ramen.ProtectedVolumeReplicationGroupList,
 	vrgsExpected []ramen.VolumeReplicationGroup,
 ) {
-	vrgsStatusStateUpdate(protectedVrgList.Status.Items, vrgsExpected)
-	Expect(protectedVrgList.Status.Items).To(ContainElements(vrgsExpected))
+	Eventually(func() []ramen.VolumeReplicationGroup {
+		vrgsStatusStateUpdate(protectedVrgList.Status.Items, vrgsExpected)
+
+		return protectedVrgList.Status.Items
+	}, timeout, interval).Should(ContainElements(vrgsExpected))
 }
 
 func vrgsStatusStateUpdate(vrgsS3, vrgsK8s []ramen.VolumeReplicationGroup) {
