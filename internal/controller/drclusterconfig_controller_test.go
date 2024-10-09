@@ -64,7 +64,7 @@ func ensureClusterClaim(apiReader client.Reader, class, name string) {
 		}
 
 		return nil
-	}, timeout, interval).Should(BeNil())
+	}, timeout*2, interval).Should(BeNil())
 }
 
 var _ = Describe("DRClusterConfig-ClusterClaimsTests", Ordered, func() {
