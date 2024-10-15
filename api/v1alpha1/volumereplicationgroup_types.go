@@ -326,7 +326,7 @@ type VolumeReplicationGroupStatus struct {
 
 	// One of ProtectedPVCs or ProtectedCGs must be set
 	ProtectedPVCs []ProtectedPVC `json:"protectedPVCs,omitempty"`
-	ProtectedCGs []ProtectedCG `json:"protectedCGs,omitempty"`
+	ProtectedCGs  []ProtectedCG  `json:"protectedCGs,omitempty"`
 
 	// Conditions are the list of VRG's summary conditions and their status.
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
