@@ -41,3 +41,7 @@ patches:
                 env:
                   - name: ROOK_DISABLE_ADMISSION_CONTROLLER
                     value: 'true'
+                  - name: ROOK_CSI_CEPH_IMAGE
+                    value: quay.io/madhupr001/cephcsi:vgr
+                  - name: ROOK_CSIADDONS_IMAGE
+                    value: quay.io/nladha/csiaddons-sidecar:vgr
