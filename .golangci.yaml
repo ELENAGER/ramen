@@ -167,7 +167,7 @@ linters:
     - unparam
     - unused
     - usestdlibvars
-    #  - varcheck // Fully deprecated, remove this line once an alternative is enabled for the same
+    - varcheck
     - wastedassign
     - whitespace
     - wsl
