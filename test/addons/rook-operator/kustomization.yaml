@@ -41,3 +41,17 @@ patches:
                 env:
                   - name: ROOK_DISABLE_ADMISSION_CONTROLLER
                     value: 'true'
+  - target:
+      kind: Deployment
+      name: rook-ceph-operator
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: not-used
+      spec:
+        template:
+          spec:
+            containers:
+             - name: rook-ceph-operator
+               image: quay.io/nladha/rook:snapshot
