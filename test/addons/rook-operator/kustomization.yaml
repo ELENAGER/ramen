@@ -41,6 +41,10 @@ patches:
                 env:
                   - name: ROOK_DISABLE_ADMISSION_CONTROLLER
                     value: 'true'
+                  - name: ROOK_CSI_CEPH_IMAGE
+                    value: quay.io/nladha/cephcsi:snapshot
+                  - name: CSI_LOG_LEVEL
+                    value: "5"
   - target:
       kind: Deployment
       name: rook-ceph-operator
