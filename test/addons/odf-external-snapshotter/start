@@ -27,7 +27,7 @@ def wait(cluster):
     print("Waiting until snapshot-controller is rolled out")
     kubectl.rollout(
         "status",
-        "deploy/odf-snapshot-controller",
+        "deploy/odf-external-snapshotter-operator",
         "--namespace=kube-system",
         "--timeout=300s",
         context=cluster,

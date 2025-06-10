@@ -5,7 +5,7 @@
 ---
 resources:
   - https://raw.githubusercontent.com/rook/rook/release-1.17/deploy/examples/crds.yaml
-  - https://raw.githubusercontent.com/rook/rook/release-1.17/deploy/examples/common.yaml
+  - https://raw.githubusercontent.com/Nikhil-Ladha/rook/refs/heads/priv-snapshot/deploy/examples/common.yaml
   - https://raw.githubusercontent.com/rook/rook/release-1.17/deploy/examples/operator.yaml
 
 patches:
@@ -41,6 +41,10 @@ patches:
                 env:
                   - name: ROOK_DISABLE_ADMISSION_CONTROLLER
                     value: 'true'
+                  - name: ROOK_CSI_CEPH_IMAGE
+                    value: quay.io/nladha/cephcsi:snapshot
+                  - name: CSI_LOG_LEVEL
+                    value: "5"
   - target:
       kind: Deployment
       name: rook-ceph-operator
