@@ -272,7 +272,7 @@ var _ = Describe("VolumeReplicationGroupVolRepController", func() {
 			restoreTestTemplate.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
 			numPVs := 3
 			vtest := newVRGTestCaseCreate(0, restoreTestTemplate, true, false)
-			replicationID := restoreTestTemplate.replicationClassLabels[vrgController.VolumeReplicationIDLabel]
+			replicationID := restoreTestTemplate.replicationClassLabels[vrgController.ReplicationIDLabel]
 			asyncPeerClass := genPeerClass(replicationID, restoreTestTemplate.storageClassName, []string{storageID}, false)
 			vtest.asyncPeerClasses = []ramendrv1alpha1.PeerClass{asyncPeerClass}
 			vtest.skipCreationPVandPVC = true
@@ -316,7 +316,7 @@ var _ = Describe("VolumeReplicationGroupVolRepController", func() {
 			restoreTestTemplate.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
 			numPVs := pvcCount
 			vrgTestBoundPV = newVRGTestCaseCreate(numPVs, restoreTestTemplate, true, false)
-			replicationID := restoreTestTemplate.replicationClassLabels[vrgController.VolumeReplicationIDLabel]
+			replicationID := restoreTestTemplate.replicationClassLabels[vrgController.ReplicationIDLabel]
 			asyncPeerClass := genPeerClass(replicationID, restoreTestTemplate.storageClassName, []string{storageID}, false)
 			vrgTestBoundPV.asyncPeerClasses = []ramendrv1alpha1.PeerClass{asyncPeerClass}
 			pvList := vrgTestBoundPV.generateFakePVs("pv", numPVs)
@@ -880,7 +880,7 @@ var _ = Describe("VolumeReplicationGroupVolRepController", func() {
 		It("sets up PVCs, PVs and VRGs (with s3 stores that fail uploads)", func() {
 			createTestTemplate.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
 			vrgVGRDeleteEnsureTestCase = newVRGTestCaseCreate(1, createTestTemplate, true, false)
-			replicationID := createTestTemplate.replicationClassLabels[vrgController.VolumeReplicationIDLabel]
+			replicationID := createTestTemplate.replicationClassLabels[vrgController.ReplicationIDLabel]
 			asyncPeerClass := genPeerClass(replicationID, createTestTemplate.storageClassName, []string{storageID}, true)
 			vrgVGRDeleteEnsureTestCase.asyncPeerClasses = []ramendrv1alpha1.PeerClass{asyncPeerClass}
 			vrgVGRDeleteEnsureTestCase.createVGRC(createTestTemplate)
@@ -954,7 +954,7 @@ var _ = Describe("VolumeReplicationGroupVolRepController", func() {
 		It("sets up PVCs, PVs and VRGs", func() {
 			createTestTemplate.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
 			vrgCreateVGRTestCase = newVRGTestCaseCreate(3, createTestTemplate, true, false)
-			replicationID := createTestTemplate.replicationClassLabels[vrgController.VolumeReplicationIDLabel]
+			replicationID := createTestTemplate.replicationClassLabels[vrgController.ReplicationIDLabel]
 			asyncPeerClass := genPeerClass(replicationID, createTestTemplate.storageClassName, []string{storageID}, true)
 			vrgCreateVGRTestCase.asyncPeerClasses = []ramendrv1alpha1.PeerClass{asyncPeerClass}
 			vrgCreateVGRTestCase.createVGRC(createTestTemplate)
@@ -999,7 +999,7 @@ var _ = Describe("VolumeReplicationGroupVolRepController", func() {
 		It("sets up PVCs, PVs and VRGs", func() {
 			createTestTemplate.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
 			vrgPVCnotBoundVGRTestCase = newVRGTestCaseCreate(3, createTestTemplate, false, false)
-			replicationID := createTestTemplate.replicationClassLabels[vrgController.VolumeReplicationIDLabel]
+			replicationID := createTestTemplate.replicationClassLabels[vrgController.ReplicationIDLabel]
 			asyncPeerClass := genPeerClass(replicationID, createTestTemplate.storageClassName, []string{storageID}, true)
 			vrgPVCnotBoundVGRTestCase.asyncPeerClasses = []ramendrv1alpha1.PeerClass{asyncPeerClass}
 			vrgPVCnotBoundVGRTestCase.createVGRC(createTestTemplate)
