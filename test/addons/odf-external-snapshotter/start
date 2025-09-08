@@ -19,7 +19,9 @@ def deploy(cluster):
     kubectl.wait("--for=condition=established", "--filename", path, context=cluster)
 
     print("Deploying snapshot-controller")
-    path = cache.get("controller", "addons/odf-external-snapshotter-controller-8.2.yaml")
+    path = cache.get(
+        "controller", "addons/odf-external-snapshotter-controller-8.2.yaml"
+    )
     kubectl.apply("--filename", path, context=cluster)
 
 
