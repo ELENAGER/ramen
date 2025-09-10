@@ -403,7 +403,7 @@ func (v *VRGInstance) resetCGLabelValue(pvc *corev1.PersistentVolumeClaim) (bool
 		return !reset, fmt.Errorf("error (%s) updating PVC labels", err)
 	}
 
-	return !reset, nil
+	return reset, nil
 }
 
 // getVGRUsingSCLabel fetches the VGR that is protecting the PVC using the SC and VGRC labels, it is useful when the CG
