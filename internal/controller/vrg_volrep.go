@@ -1403,7 +1403,7 @@ func (v *VRGInstance) selectVolumeReplicationClass(
 	matchingReplicationClassList := []client.Object{}
 
 	filterMatchingReplicationClass := func(replicationClass client.Object, parameters map[string]string,
-		provisioner string,
+		provisioner string, rIDFromPeerClass string, rIDLabel string,
 	) {
 		schedulingInterval, found := parameters[ReplicationClassScheduleKey]
 
@@ -1432,28 +1432,47 @@ func (v *VRGInstance) selectVolumeReplicationClass(
 			if sIDFromReplicationClass != storageClass.GetLabels()[StorageIDLabel] {
 				return
 			}
+
+			if rIDFromPeerClass != replicationClass.GetLabels()[rIDLabel] {
+				return
+			}
 		}
 
 		matchingReplicationClassList = append(matchingReplicationClassList, replicationClass)
 	}
 
 	var objType string
+	var rID string
+
+	peerClass, err := v.findPeerClassMatchingSC(storageClass, v.instance.Spec.Async.PeerClasses, pvc)
 
 	if !selectVolumeGroup {
 		for index := range v.replClassList.Items {
 			objType = "VolumeReplicationClass"
 			replicationClass := &v.replClassList.Items[index]
 
+			if err != nil  || peerClass == nil {
+				v.log.Error(err, fmt.Sprintf("no peer class was found for %s", objType))
+			} else {
+				rID = peerClass.ReplicationID
+			}
+
 			filterMatchingReplicationClass(replicationClass, replicationClass.Spec.Parameters,
-				replicationClass.Spec.Provisioner)
+				replicationClass.Spec.Provisioner, rID, ReplicationIDLabel)
 		}
 	} else {
 		for index := range v.grpReplClassList.Items {
 			objType = "VolumeGroupReplicationClass"
 			replicationClass := &v.grpReplClassList.Items[index]
 
+			if err != nil  || peerClass == nil {
+				v.log.Error(err, fmt.Sprintf("no peer class was found for %s", objType))
+			} else {
+				rID = peerClass.GroupReplicationID
+			}
+
 			filterMatchingReplicationClass(replicationClass, replicationClass.Spec.Parameters,
-				replicationClass.Spec.Provisioner)
+				replicationClass.Spec.Provisioner, rID, GroupReplicationIDLabel)
 		}
 	}
 
