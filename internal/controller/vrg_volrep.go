@@ -306,14 +306,6 @@ func (v *VRGInstance) updateProtectedPVCs(pvc *corev1.PersistentVolumeClaim) err
 			pvc.GetName(), err)
 	}
 
-	_, selectVolumeGroup := v.isCGEnabled(pvc)
-
-	volumeReplicationClass, err := v.selectVolumeReplicationClass(pvc, selectVolumeGroup)
-	if err != nil {
-		return fmt.Errorf("failed to find the appropriate VolumeReplicationClass (%s) %w",
-			v.instance.Name, err)
-	}
-
 	protectedPVC := v.findProtectedPVC(pvc.GetNamespace(), pvc.GetName())
 	if protectedPVC == nil {
 		protectedPVC = v.addProtectedPVC(pvc.GetNamespace(), pvc.GetName())
@@ -326,16 +318,28 @@ func (v *VRGInstance) updateProtectedPVCs(pvc *corev1.PersistentVolumeClaim) err
 	protectedPVC.Resources = pvc.Spec.Resources
 	protectedPVC.VolumeMode = pvc.Spec.VolumeMode
 
-	setPVCStorageIdentifiers(protectedPVC, storageClass, volumeReplicationClass)
-
-	return nil
+	return v.setPVCStorageIdentifiers(protectedPVC, storageClass, pvc)
 }
 
-func setPVCStorageIdentifiers(
+func (v *VRGInstance) setPVCStorageIdentifiers(
 	protectedPVC *ramendrv1alpha1.ProtectedPVC,
 	storageClass *storagev1.StorageClass,
-	volumeReplicationClass client.Object,
-) {
+	pvc *corev1.PersistentVolumeClaim,
+) error {
+	// If SC is offloaded, do not proceed
+	offloaded := rmnutil.HasLabel(storageClass, StorageOffloadedLabel)
+	if offloaded {
+		return nil
+	}
+
+	// We should always take rID from VRClass and not grID, and for !offloaded
+	// VRC will be present (is a pre-requisite)
+	volumeReplicationClass, err := v.selectVolumeReplicationClass(pvc, false)
+	if err != nil {
+		return fmt.Errorf("failed to find the appropriate VolumeReplicationClass (%s) %w",
+			v.instance.Name, err)
+	}
+
 	protectedPVC.StorageIdentifiers.StorageProvisioner = storageClass.Provisioner
 
 	if value, ok := storageClass.Labels[StorageIDLabel]; ok {
@@ -351,6 +355,8 @@ func setPVCStorageIdentifiers(
 			protectedPVC.StorageIdentifiers.ReplicationID.Modes = MModesFromCSV(modes)
 		}
 	}
+
+	return nil
 }
 
 func MModesFromCSV(modes string) []ramendrv1alpha1.MMode {
