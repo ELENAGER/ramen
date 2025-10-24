@@ -56,6 +56,10 @@ spec:
       labels:
         component: minio
     spec:
+      securityContext:
+        runAsGroup: 0
+        runAsUser: 0
+      serviceAccountName: minio-priv
       volumes:
         - name: storage
           persistentVolumeClaim:
@@ -65,6 +69,11 @@ spec:
         - name: minio
           image: quay.io/minio/minio:RELEASE.2024-08-29T01-40-52Z
           imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+            runAsGroup: 0
+            runAsUser: 0
+            allowPrivilegeEscalation: true
           resources:
             limits:
               # Typical usage is 150Mi
@@ -79,7 +88,6 @@ spec:
               value: "minio123"
           ports:
             - containerPort: 9000
-              hostPort: 9000
           volumeMounts:
             - name: storage
               mountPath: "/storage"
@@ -100,3 +108,9 @@ spec:
       nodePort: 30000
   selector:
     component: minio
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: minio-priv
+  namespace: minio
