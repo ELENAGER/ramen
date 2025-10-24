@@ -23,6 +23,8 @@ def deploy(cluster):
     print("Deploying minio")
     kubectl.apply("--filename", "minio.yaml", context=cluster)
 
+    # oc adm policy add-scc-to-user privileged -z minio-priv -n minio
+
 
 def wait(cluster):
     print("Waiting until minio is rolled out")
