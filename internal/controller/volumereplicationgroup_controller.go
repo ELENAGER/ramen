@@ -96,6 +96,10 @@ func (r *VolumeReplicationGroupReconciler) SetupWithManager(
 				),
 			),
 		).
+		Watches(&corev1.PersistentVolume{},
+			handler.EnqueueRequestsFromMapFunc(r.pvMapFunc),
+			builder.WithPredicates(pvPredicateFunc()),
+		).
 		Watches(&corev1.PersistentVolumeClaim{},
 			handler.EnqueueRequestsFromMapFunc(r.pvcMapFunc),
 			builder.WithPredicates(pvcPredicateFunc()),
@@ -133,6 +137,26 @@ func (r *VolumeReplicationGroupReconciler) SetupWithManager(
 type objectToReconcileRequestsMapper struct {
 	reader client.Reader
 	log    logr.Logger
+}
+
+func (r *VolumeReplicationGroupReconciler) pvMapFunc(ctx context.Context, obj client.Object) []reconcile.Request {
+	log := ctrl.Log.WithName("pvcmap").WithName("VolumeReplicationGroup")
+
+	pv, ok := obj.(*corev1.PersistentVolume)
+	if !ok {
+		log.Info("PersistentVolume(PV) map function received non-PV resource")
+
+		return []reconcile.Request{}
+	}
+
+	pvc, err := util.GetPVC(ctx, r.Client,
+		types.NamespacedName{Name: pv.Spec.ClaimRef.Name, Namespace: pv.Spec.ClaimRef.Namespace})
+	if err != nil {
+		return []reconcile.Request{}
+	}
+
+	return filterPVC(r.Client, pvc,
+		log.WithValues("pvc", types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}))
 }
 
 func (r *VolumeReplicationGroupReconciler) pvcMapFunc(ctx context.Context, obj client.Object) []reconcile.Request {
@@ -223,6 +247,56 @@ func pvcPredicateFunc() predicate.Funcs {
 	}
 
 	return pvcPredicate
+}
+
+func pvPredicateFunc() predicate.Funcs {
+	log := ctrl.Log.WithName("pvmap").WithName("VolumeReplicationGroup")
+	pvPredicate := predicate.Funcs{
+		// NOTE: Create predicate is retained, to help with logging the event
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldPV, ok := e.ObjectOld.(*corev1.PersistentVolume)
+			if !ok {
+				log.Info("Update event for PersistentVolume received non-PersistentVolume old object")
+
+				return false
+			}
+			newPV, ok := e.ObjectNew.(*corev1.PersistentVolume)
+			if !ok {
+				log.Info("Update event for PersistentVolume received non-PersistentVolume new object")
+
+				return false
+			}
+
+			log.Info("Update event for PersistentVolume", "namespace", oldPV.GetNamespace(), "name", oldPV.GetName())
+
+			return updatePVDecision(oldPV, newPV, log)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+
+	return pvPredicate
+}
+
+func updatePVDecision(oldPV, newPV *corev1.PersistentVolume, log logr.Logger) bool {
+	const requeue bool = true
+
+	predicateLog := log.WithValues("pv", types.NamespacedName{Name: newPV.Name, Namespace: newPV.Namespace}.String())
+
+	before := oldPV.GetAnnotations()
+	after := newPV.GetAnnotations()
+
+	if before[pvPeerVolumeHandleAnnotation] != after[pvPeerVolumeHandleAnnotation] {
+		predicateLog.Info("Reconciling due to change in peer volume handle")
+
+		return requeue
+	}
+
+	return !requeue
 }
 
 func updateEventDecision(oldPVC, newPVC *corev1.PersistentVolumeClaim, log logr.Logger) bool {
@@ -529,6 +603,7 @@ const (
 	pvcVRAnnotationArchivedVersionV1 = "archiveV1"
 	pvVRAnnotationRetentionKey       = "volumereplicationgroups.ramendr.openshift.io/vr-retained"
 	pvVRAnnotationRetentionValue     = "retained"
+	pvPeerVolumeHandleAnnotation     = "volumereplicationgroups.ramendr.openshift.io/peer-volume-handle"
 	RestoreAnnotation                = "volumereplicationgroups.ramendr.openshift.io/ramen-restore"
 	RestoredByRamen                  = "True"
 

@@ -339,6 +339,25 @@ func DeletePVC(ctx context.Context,
 	return nil
 }
 
+func HashPV(pv *corev1.PersistentVolume) string {
+	if pv == nil {
+		return ""
+	}
+
+	minimal := map[string]interface{}{
+		"annotations": pv.Annotations,
+	}
+
+	canonicalJSON, err := toCanonicalJSON(minimal)
+	if err != nil {
+		return ""
+	}
+
+	sum := sha256.Sum256(canonicalJSON)
+
+	return hex.EncodeToString(sum[:])
+}
+
 func HashPVC(pvc *corev1.PersistentVolumeClaim) string {
 	pvcCopy := pvc.DeepCopy()
 
