@@ -627,7 +627,7 @@ func (v *VRGInstance) isArchivedAlready(pvc *corev1.PersistentVolumeClaim, log l
 		return false
 	}
 
-	if pv.Annotations[pvcVRAnnotationArchivedKey] != v.generateArchiveAnnotation(pv.Generation) {
+	if pv.Annotations[pvcVRAnnotationArchivedKey] != rmnutil.HashPV(&pv) {
 		return false
 	}
 
@@ -2112,9 +2112,7 @@ func (v *VRGInstance) addArchivedAnnotationForPVC(pvc *corev1.PersistentVolumeCl
 			pv.Name, v.instance.Namespace, v.instance.Name, err)
 	}
 
-	value := v.generateArchiveAnnotation(pv.Generation)
-
-	return v.addAnnotationForResource(&pv, "PersistentVolume", pvcVRAnnotationArchivedKey, value, log)
+	return v.addAnnotationForResource(&pv, "PersistentVolume", pvcVRAnnotationArchivedKey, rmnutil.HashPV(&pv), log)
 }
 
 // s3KeyPrefix returns the S3 key prefix of cluster data of this VRG.
@@ -2567,6 +2565,24 @@ func (v *VRGInstance) processPVSecrets(pv *corev1.PersistentVolume) error {
 	return nil
 }
 
+func (v *VRGInstance) processPeerVolumeHandleAnnotation(pv *corev1.PersistentVolume) {
+	annotations := pv.GetAnnotations()
+
+	peerVolumeHandle, ok := annotations[pvPeerVolumeHandleAnnotation]
+	if !ok || peerVolumeHandle == "" {
+		// Backward compatibility: nothing to do
+		return
+	}
+
+	if pv.Spec.CSI == nil {
+		return
+	}
+
+	if peerVolumeHandle != pv.Spec.CSI.VolumeHandle {
+		pv.Spec.CSI.VolumeHandle = peerVolumeHandle
+	}
+}
+
 // cleanupForRestore cleans up required PV or PVC fields, to ensure restore succeeds
 // to a new cluster, and rebinding the PVC to an existing PV with the same claimRef
 func (v *VRGInstance) cleanupPVForRestore(pv *corev1.PersistentVolume) error {
@@ -2576,6 +2592,8 @@ func (v *VRGInstance) cleanupPVForRestore(pv *corev1.PersistentVolume) error {
 		pv.Spec.ClaimRef.ResourceVersion = ""
 		pv.Spec.ClaimRef.APIVersion = ""
 	}
+
+	v.processPeerVolumeHandleAnnotation(pv)
 
 	return v.processPVSecrets(pv)
 }
