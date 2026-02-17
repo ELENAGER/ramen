@@ -271,3 +271,22 @@ func TestPVCHashChangeForResize(t *testing.T) {
 	newHash := util.HashPVC(pvc)
 	assert.NotEqual(t, oldHash, newHash)
 }
+
+func TestPVHashChangeForAnnotation(t *testing.T) {
+	pv := &corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-pv",
+			Annotations: map[string]string{
+				"test-annotation": "v1",
+			},
+		},
+	}
+
+	oldHash := util.HashPV(pv)
+
+	// Change annotation value
+	pv.Annotations["test-annotation"] = "v2"
+
+	newHash := util.HashPV(pv)
+	assert.NotEqual(t, oldHash, newHash)
+}
