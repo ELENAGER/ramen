@@ -9,8 +9,10 @@ import (
 	"net/url"
 	"os"
 
+	"dario.cat/mergo"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	configv1alpha1 "k8s.io/component-base/config/v1alpha1"
@@ -275,6 +277,97 @@ func getMaxConcurrentReconciles(ramenConfig *ramendrv1alpha1.RamenConfig) int {
 	}
 
 	return ramenConfig.MaxConcurrentReconciles
+}
+
+func CreateOrUpdateConfigMap(
+	ctx context.Context,
+	c client.Client,
+	r client.Reader,
+	defaultRamenConfig *ramendrv1alpha1.RamenConfig,
+	log logr.Logger,
+) (*ramendrv1alpha1.RamenConfig, error) {
+	if defaultRamenConfig == nil {
+		return nil, fmt.Errorf("defaultRamenConfig must not be nil")
+	}
+
+	configMapName := HubOperatorConfigMapName
+	if ControllerType != ramendrv1alpha1.DRHubType {
+		configMapName = DrClusterOperatorConfigMapName
+	}
+
+	configMap := &corev1.ConfigMap{}
+	key := types.NamespacedName{
+		Namespace: RamenOperatorNamespace(),
+		Name:      configMapName,
+	}
+
+	if err := r.Get(ctx, key, configMap); err != nil {
+		if !k8serrors.IsNotFound(err) {
+			return nil, err
+		}
+
+		return configMapCreate(ctx, c, key.Name, defaultRamenConfig, log)
+	}
+
+	// Pre-existing ConfigMap (user/admin YAML): merge onto current code defaults for upgrades.
+	userConfig := &ramendrv1alpha1.RamenConfig{}
+	if err := yaml.Unmarshal([]byte(configMap.Data[ConfigMapRamenConfigKeyName]), userConfig); err != nil {
+		return nil, err
+	}
+
+	return MergeRamenConfigUserOntoDefaults(defaultRamenConfig, userConfig)
+}
+
+// MergeRamenConfigUserOntoDefaults deep-copies defaults (code defaults for this release) and merges
+// user (from ConfigMap YAML) into it. Omitted or zero-valued fields in user keep defaults, so
+// upgrades pick up new default fields without rewriting the ConfigMap.
+//
+// mergo.WithOverride is required so non-empty fields in user YAML override non-empty code defaults
+// (e.g. maxConcurrentReconciles). Omitted keys still unmarshal as zero and may overwrite defaults;
+// see mergo docs for edge cases (e.g. bool false vs omitted).
+func MergeRamenConfigUserOntoDefaults(
+	defaults, user *ramendrv1alpha1.RamenConfig,
+) (*ramendrv1alpha1.RamenConfig, error) {
+	if defaults == nil {
+		return user, nil
+	}
+
+	if user == nil {
+		return defaults.DeepCopy(), nil
+	}
+
+	merged := defaults.DeepCopy()
+	if err := mergo.Merge(merged, user, mergo.WithOverride); err != nil {
+		return nil, fmt.Errorf("merge ramen config: %w", err)
+	}
+
+	return merged, nil
+}
+
+func configMapCreate(
+	ctx context.Context,
+	c client.Client,
+	configMapName string,
+	desiredRamenConfig *ramendrv1alpha1.RamenConfig,
+	log logr.Logger,
+) (*ramendrv1alpha1.RamenConfig, error) {
+	userKey := types.NamespacedName{
+		Namespace: RamenOperatorNamespace(),
+		Name:      configMapName,
+	}
+
+	newConfigMap, err := ConfigMapNew(userKey.Namespace, userKey.Name, desiredRamenConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = c.Create(ctx, newConfigMap); err != nil {
+		return nil, err
+	}
+
+	log.Info("created configmap", "namespace", newConfigMap.Namespace, "name", newConfigMap.Name)
+
+	return desiredRamenConfig, nil
 }
 
 func ConfigMapNew(

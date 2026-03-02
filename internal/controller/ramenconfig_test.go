@@ -87,3 +87,27 @@ func s3ProfilesStore(s3Profiles []ramen.S3StoreProfile) {
 
 	configMapUpdate()
 }
+
+func TestMergeRamenConfigUserOntoDefaults_keepsDefaultsWhenUserOmitsFields() {
+	defaults := controllers.DefaultRamenConfig(ramen.DRHubType)
+	user := &ramen.RamenConfig{} // empty YAML upgrade: all zero values
+
+	merged, err := controllers.MergeRamenConfigUserOntoDefaults(defaults, user)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(merged.MaxConcurrentReconciles).To(Equal(defaults.MaxConcurrentReconciles))
+	Expect(merged.RamenOpsNamespace).To(Equal(defaults.RamenOpsNamespace))
+	Expect(merged.Metrics.BindAddress).To(Equal(defaults.Metrics.BindAddress))
+}
+
+func TestMergeRamenConfigUserOntoDefaults_userOverridesDefaults() {
+	defaults := controllers.DefaultRamenConfig(ramen.DRHubType)
+	user := &ramen.RamenConfig{
+		MaxConcurrentReconciles: 7,
+		RamenOpsNamespace:       "custom-ops",
+	}
+
+	merged, err := controllers.MergeRamenConfigUserOntoDefaults(defaults, user)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(merged.MaxConcurrentReconciles).To(Equal(7))
+	Expect(merged.RamenOpsNamespace).To(Equal("custom-ops"))
+}

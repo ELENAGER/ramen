@@ -10,6 +10,7 @@ toolchain go1.24.5
 replace github.com/ramendr/ramen/api => ./api
 
 require (
+	dario.cat/mergo v1.0.2
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/backube/volsync v0.11.0
 	github.com/csi-addons/kubernetes-csi-addons v0.10.1-0.20250723164929-7735388cf184
