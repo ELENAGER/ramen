@@ -5,6 +5,7 @@ package controllers_test
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -95,8 +96,25 @@ func protectedVrgListExpectIncludeOnly(protectedVrgList *ramen.ProtectedVolumeRe
 func protectedVrgListExpectInclude(protectedVrgList *ramen.ProtectedVolumeReplicationGroupList,
 	vrgsExpected []ramen.VolumeReplicationGroup,
 ) {
-	vrgsStatusStateUpdate(protectedVrgList.Status.Items, vrgsExpected)
-	Expect(protectedVrgList.Status.Items).To(ContainElements(vrgsExpected))
+	Eventually(func() bool {
+		protectedVrgListRefresh(protectedVrgList)
+
+		if protectedVrgList.Status == nil || len(protectedVrgList.Status.Items) == 0 {
+			return false
+		}
+
+		items := slices.Clone(protectedVrgList.Status.Items)
+		vrgsStatusStateUpdate(items, vrgsExpected)
+		for _, exp := range vrgsExpected {
+			if !slices.ContainsFunc(items, func(item ramen.VolumeReplicationGroup) bool {
+				return item.Namespace == exp.Namespace && item.Name == exp.Name
+			}) {
+				return false
+			}
+		}
+
+		return true
+	}, timeout, interval).Should(BeTrue())
 }
 
 func vrgsStatusStateUpdate(vrgsS3, vrgsK8s []ramen.VolumeReplicationGroup) {
