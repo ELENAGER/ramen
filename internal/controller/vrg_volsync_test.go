@@ -306,8 +306,7 @@ var _ = Describe("VolumeReplicationGroupVolSyncController", func() {
 
 				JustBeforeEach(func() {
 					// Update the vrg spec with some RDSpec entries
-					Expect(k8sClient.Get(testCtx, client.ObjectKeyFromObject(testVrg), testVrg)).To(Succeed())
-					testVrg.Spec.VolSync.RDSpec = []ramendrv1alpha1.VolSyncReplicationDestinationSpec{
+					rdSpec := []ramendrv1alpha1.VolSyncReplicationDestinationSpec{
 						{
 							ProtectedPVC: ramendrv1alpha1.ProtectedPVC{
 								Name:               "testingpvc-a",
@@ -333,10 +332,11 @@ var _ = Describe("VolumeReplicationGroupVolSyncController", func() {
 					}
 
 					Eventually(func() error {
+						Expect(k8sClient.Get(testCtx, client.ObjectKeyFromObject(testVrg), testVrg)).To(Succeed())
+						testVrg.Spec.VolSync.RDSpec = rdSpec
+
 						return k8sClient.Update(testCtx, testVrg)
 					}, testMaxWait, testInterval).Should(Succeed())
-
-					Expect(k8sClient.Update(testCtx, testVrg)).To(Succeed())
 
 					allRDs := &volsyncv1alpha1.ReplicationDestinationList{}
 					Eventually(func() int {
