@@ -663,7 +663,7 @@ func undoPVRetention(pv *corev1.PersistentVolume) {
 		return
 	}
 
-	pv.Spec.PersistentVolumeReclaimPolicy = corev1.PersistentVolumeReclaimDelete
+	// pv.Spec.PersistentVolumeReclaimPolicy = corev1.PersistentVolumeReclaimDelete
 	delete(pv.ObjectMeta.Annotations, pvVRAnnotationRetentionKey)
 }
 

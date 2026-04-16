@@ -264,6 +264,7 @@ func pvPredicateFunc() predicate.Funcs {
 
 				return false
 			}
+
 			newPV, ok := e.ObjectNew.(*corev1.PersistentVolume)
 			if !ok {
 				log.Info("Update event for PersistentVolume received non-PersistentVolume new object")
