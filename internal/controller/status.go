@@ -122,6 +122,7 @@ const (
 
 // Just when VRG has been picked up for reconciliation when nothing has been
 // figured out yet.
+// nolint:funlen
 func setVRGInitialCondition(conditions *[]metav1.Condition, observedGeneration int64, message string) {
 	time := metav1.NewTime(time.Now())
 
@@ -159,6 +160,14 @@ func setVRGInitialCondition(conditions *[]metav1.Condition, observedGeneration i
 	})
 	util.SetStatusConditionIfNotFound(conditions, metav1.Condition{
 		Type:               VRGConditionTypeKubeObjectsReady,
+		Reason:             VRGConditionReasonInitializing,
+		ObservedGeneration: observedGeneration,
+		Status:             metav1.ConditionUnknown,
+		LastTransitionTime: time,
+		Message:            message,
+	})
+	util.SetStatusConditionIfNotFound(conditions, metav1.Condition{
+		Type:               VRGConditionTypeHooksReady,
 		Reason:             VRGConditionReasonInitializing,
 		ObservedGeneration: observedGeneration,
 		Status:             metav1.ConditionUnknown,
