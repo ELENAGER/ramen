@@ -1869,8 +1869,6 @@ func (v *VRGInstance) updateVRGConditionsAndStatus(result ctrl.Result) ctrl.Resu
 }
 
 func (v *VRGInstance) updateVRGStatus(result ctrl.Result) ctrl.Result {
-	v.log.Info("Updating VRG status")
-
 	var pvcGroups []ramendrv1alpha1.Groups
 
 	if util.IsCGEnabledForVolRep(v.ctx, v.reconciler.APIReader) {
@@ -1907,6 +1905,9 @@ func (v *VRGInstance) updateVRGStatus(result ctrl.Result) ctrl.Result {
 
 	if !reflect.DeepEqual(v.savedInstanceStatus, v.instance.Status) {
 		v.instance.Status.LastUpdateTime = metav1.Now()
+
+		v.updateVRGLastGroupSyncMetrics()
+
 		if err := v.reconciler.Status().Update(v.ctx, v.instance); err != nil {
 			v.log.Info(fmt.Sprintf("Failed to update VRG status (%v/%s)",
 				err, v.instance.Name))
@@ -2173,9 +2174,7 @@ func (v *VRGInstance) updateVRGConditions() {
 		v.logAndSetConditions(VRGConditionTypeDestinationInfoAvailable, destInfoCond)
 	}
 
-	v.updateVRGLastGroupSyncTime()
-	v.updateVRGLastGroupSyncDuration()
-	v.updateLastGroupSyncBytes()
+	v.updateVRGLastGroupSyncMetrics()
 }
 
 func (v *VRGInstance) vrgReadyStatus(reason string) *metav1.Condition {
@@ -2205,6 +2204,13 @@ func (v *VRGInstance) vrgReadyStatus(reason string) *metav1.Condition {
 	}
 
 	return newVRGAsPrimaryReadyCondition(v.instance.Generation, reason, msg)
+}
+
+// updateVRGLastGroupSyncMetrics updates all group-level sync metrics before persisting status
+func (v *VRGInstance) updateVRGLastGroupSyncMetrics() {
+	v.updateVRGLastGroupSyncTime()
+	v.updateVRGLastGroupSyncDuration()
+	v.updateLastGroupSyncBytes()
 }
 
 func (v *VRGInstance) updateVRGLastGroupSyncTime() {
