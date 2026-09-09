@@ -244,6 +244,11 @@ func (in *DRClusterConfigStatus) DeepCopyInto(out *DRClusterConfigStatus) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.VolumeAttributesClasses != nil {
+		in, out := &in.VolumeAttributesClasses, &out.VolumeAttributesClasses
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.NetworkFenceClasses != nil {
 		in, out := &in.NetworkFenceClasses, &out.NetworkFenceClasses
 		*out = make([]string, len(*in))

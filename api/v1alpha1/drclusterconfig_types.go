@@ -59,6 +59,10 @@ type DRClusterConfigStatus struct {
 	// ramen replicationid label
 	VolumeGroupReplicationClasses []string `json:"volumeGroupReplicationClasses,omitempty"`
 
+	// VolumeAttributesClasses lists the detected volume attributes classes on the cluster that carry the ramen
+	// storageid label
+	VolumeAttributesClasses []string `json:"volumeAttributesClasses,omitempty"`
+
 	// NetworkFenceClass lists all the classes that match the provisioner on the cluster that can be used for fencing
 	// operations
 	NetworkFenceClasses []string `json:"networkFenceClasses,omitempty"`
