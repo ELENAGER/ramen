@@ -14,6 +14,7 @@ import (
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	recipev1 "github.com/ramendr/recipe/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -75,6 +76,15 @@ func (f FakeMCVGetter) GetVGRClassFromManagedCluster(resourceName, managedCluste
 }
 
 func (f FakeMCVGetter) ListVGRClassMCVs(managedCluster string) (*viewv1beta1.ManagedClusterViewList, error) {
+	return &viewv1beta1.ManagedClusterViewList{}, nil
+}
+
+func (f FakeMCVGetter) GetVACClassFromManagedCluster(resourceName, managedCluster string, annotations map[string]string,
+) (*storagev1.VolumeAttributesClass, error) {
+	return nil, nil
+}
+
+func (f FakeMCVGetter) ListVACClassMCVs(managedCluster string) (*viewv1beta1.ManagedClusterViewList, error) {
 	return &viewv1beta1.ManagedClusterViewList{}, nil
 }
 

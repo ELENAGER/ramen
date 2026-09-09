@@ -89,6 +89,12 @@ type ManagedClusterViewGetter interface {
 		resourceName, managedCluster string,
 		annotations map[string]string) (*volrep.VolumeGroupReplicationClass, error)
 
+	GetVACClassFromManagedCluster(
+		resourceName, managedCluster string,
+		annotations map[string]string) (*storagev1.VolumeAttributesClass, error)
+
+	ListVACClassMCVs(managedCluster string) (*viewv1beta1.ManagedClusterViewList, error)
+
 	GetNSFromManagedCluster(
 		managedCluster, resourceName string) (*corev1.Namespace, error)
 
@@ -494,6 +500,31 @@ func (m ManagedClusterViewGetterImpl) GetRecipeFromManagedCluster(cluster, resou
 
 func (m ManagedClusterViewGetterImpl) ListVRClassMCVs(cluster string) (*viewv1beta1.ManagedClusterViewList, error) {
 	return m.listMCVsWithLabel(cluster, map[string]string{VRClassLabel: ""})
+}
+
+func (m ManagedClusterViewGetterImpl) GetVACClassFromManagedCluster(resourceName, managedCluster string,
+	annotations map[string]string,
+) (*storagev1.VolumeAttributesClass, error) {
+	vacc := &storagev1.VolumeAttributesClass{}
+
+	err := m.getResourceFromManagedCluster(
+		resourceName,
+		"",
+		managedCluster,
+		annotations,
+		map[string]string{VACClassLabel: ""},
+		BuildManagedClusterViewName(resourceName, "", MWTypeVACClass),
+		"VolumeAttributesClass",
+		storagev1.SchemeGroupVersion.Group,
+		storagev1.SchemeGroupVersion.Version,
+		vacc,
+	)
+
+	return vacc, err
+}
+
+func (m ManagedClusterViewGetterImpl) ListVACClassMCVs(cluster string) (*viewv1beta1.ManagedClusterViewList, error) {
+	return m.listMCVsWithLabel(cluster, map[string]string{VACClassLabel: ""})
 }
 
 // outputs a string for use in creating a ManagedClusterView name

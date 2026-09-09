@@ -26,6 +26,7 @@ type classLists struct {
 	vrClasses  []*volrep.VolumeReplicationClass
 	vgrClasses []*volrep.VolumeGroupReplicationClass
 	vgsClasses []util.VolumeGroupSnapshotClassWrapper
+	vacClasses []*storagev1.VolumeAttributesClass
 }
 
 // peerInfo contains a single peer relationship between a PAIR of clusters for a common storageClassName across
@@ -787,6 +788,49 @@ func pruneVGRClassViews(
 	return pruneClassViews(m, log, clusterName, survivorClassNames, mcvList)
 }
 
+func pruneVACClassViews(
+	m util.ManagedClusterViewGetter,
+	log logr.Logger,
+	clusterName string,
+	survivorClassNames []string,
+) error {
+	mcvList, err := m.ListVACClassMCVs(clusterName)
+	if err != nil {
+		return err
+	}
+
+	return pruneClassViews(m, log, clusterName, survivorClassNames, mcvList)
+}
+
+// getVACClassesFromCluster gets VolumeAttributesClasses that are claimed in the DRClusterConfig status
+func getVACClassesFromCluster(
+	u *drpolicyUpdater,
+	m util.ManagedClusterViewGetter,
+	drcConfig *ramen.DRClusterConfig,
+	clusterName string,
+) ([]*storagev1.VolumeAttributesClass, error) {
+	vacClasses := []*storagev1.VolumeAttributesClass{}
+
+	vacClassNames := drcConfig.Status.VolumeAttributesClasses
+	if len(vacClassNames) == 0 {
+		return vacClasses, nil
+	}
+
+	annotations := make(map[string]string)
+	annotations[AllDRPolicyAnnotation] = clusterName
+
+	for _, vaccName := range vacClassNames {
+		vacc, err := m.GetVACClassFromManagedCluster(vaccName, clusterName, annotations)
+		if err != nil {
+			return []*storagev1.VolumeAttributesClass{}, err
+		}
+
+		vacClasses = append(vacClasses, vacc)
+	}
+
+	return vacClasses, pruneVACClassViews(m, u.log, clusterName, vacClassNames)
+}
+
 // getClusterClasses inspects, using ManagedClusterView, the DRClusterConfig claims for all storage related classes,
 // and returns the set of classLists for the passed in clusters
 func getClusterClasses(
@@ -817,6 +861,17 @@ func getClusterClasses(
 		return classLists{}, err
 	}
 
+	return getAdditionalClusterClasses(u, m, drcConfig, cluster, clID, sClasses)
+}
+
+func getAdditionalClusterClasses(
+	u *drpolicyUpdater,
+	m util.ManagedClusterViewGetter,
+	drcConfig *ramen.DRClusterConfig,
+	cluster string,
+	clID string,
+	sClasses []*storagev1.StorageClass,
+) (classLists, error) {
 	vsClasses, err := getVSClassesFromCluster(u, m, drcConfig, cluster)
 	if err != nil {
 		return classLists{}, err
@@ -837,6 +892,11 @@ func getClusterClasses(
 		return classLists{}, err
 	}
 
+	vacClasses, err := getVACClassesFromCluster(u, m, drcConfig, cluster)
+	if err != nil {
+		return classLists{}, err
+	}
+
 	return classLists{
 		clusterID:  clID,
 		sClasses:   sClasses,
@@ -844,6 +904,7 @@ func getClusterClasses(
 		vsClasses:  vsClasses,
 		vgrClasses: vgrClasses,
 		vgsClasses: vgsClasses,
+		vacClasses: vacClasses,
 	}, nil
 }
 
@@ -862,6 +923,10 @@ func deleteViewsForClasses(m util.ManagedClusterViewGetter, log logr.Logger, clu
 	}
 
 	if err := pruneVGRClassViews(m, log, clusterName, []string{}); err != nil {
+		return err
+	}
+
+	if err := pruneVACClassViews(m, log, clusterName, []string{}); err != nil {
 		return err
 	}
 

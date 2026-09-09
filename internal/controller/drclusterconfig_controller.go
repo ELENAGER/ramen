@@ -99,6 +99,7 @@ var nadGVK = schema.GroupVersionKind{
 // +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshotclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=replication.storage.openshift.io,resources=volumereplicationclasses,verbs=get;list;watch
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=volumeattributesclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=clusterclaims,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=csiaddons.openshift.io,resources=networkfenceclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=csiaddons.openshift.io,resources=csiaddonsnodes,verbs=get;list;watch
@@ -407,6 +408,12 @@ func (r *DRClusterConfigReconciler) updateStorageClassesStatus(
 
 	slices.Sort(drCConfig.Status.VolumeGroupReplicationClasses)
 
+	if drCConfig.Status.VolumeAttributesClasses, err = r.listDRSupportedVACs(ctx); err != nil {
+		return err
+	}
+
+	slices.Sort(drCConfig.Status.VolumeAttributesClasses)
+
 	if drCConfig.Status.VolumeGroupSnapshotClasses, err = r.listDRSupportedVGSCs(ctx); err != nil {
 		return err
 	}
@@ -532,6 +539,26 @@ func (r *DRClusterConfigReconciler) listDRSupportedVGRCs(ctx context.Context) ([
 	}
 
 	return vgrcs, nil
+}
+
+// listDRSupportedVACs returns a list of VolumeAttributesClasses that are marked as DR supported
+func (r *DRClusterConfigReconciler) listDRSupportedVACs(ctx context.Context) ([]string, error) {
+	vaccs := []string{}
+
+	vacClasses := &storagev1.VolumeAttributesClassList{}
+	if err := r.Client.List(ctx, vacClasses); err != nil {
+		return nil, fmt.Errorf("failed to list VolumeAttributesClasses, %w", err)
+	}
+
+	for i := range vacClasses.Items {
+		if !util.HasLabel(&vacClasses.Items[i], StorageIDLabel) {
+			continue
+		}
+
+		vaccs = append(vaccs, vacClasses.Items[i].Name)
+	}
+
+	return vaccs, nil
 }
 
 // listDRSupportedVGSCs returns a list of VolumeGroupSnapshotClasses that are marked as DR supported
@@ -688,6 +715,7 @@ func (r *DRClusterConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		RateLimiter: rateLimiter,
 	}).For(&ramen.DRClusterConfig{}).
 		Watches(&storagev1.StorageClass{}, drccMapFn, drccPredFn).
+		Watches(&storagev1.VolumeAttributesClass{}, drccMapFn, drccPredFn).
 		Watches(&snapv1.VolumeSnapshotClass{}, drccMapFn, drccPredFn).
 		Watches(&volrep.VolumeReplicationClass{}, drccMapFn, drccPredFn).
 		Watches(&volrep.VolumeGroupReplicationClass{}, drccMapFn, drccPredFn).

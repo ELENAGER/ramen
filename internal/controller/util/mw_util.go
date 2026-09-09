@@ -53,6 +53,7 @@ const (
 	MWTypeVGSClass  string = "vgsc"
 	MWTypeVRClass   string = "vrc"
 	MWTypeVGRClass  string = "vgrc"
+	MWTypeVACClass  string = "vacc"
 	MWTypeDRCConfig string = "drcconfig"
 	MWTypeRecipe    string = "recipe"
 )
