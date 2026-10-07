@@ -3367,20 +3367,6 @@ func getCallerFunction(ancestorLevel int) string {
 	return strings.TrimPrefix(details.Name(), "github.com/ramendr/ramen/internal/controller.")
 }
 
-func (d *DRPCInstance) isVMRecipeInUse() bool {
-	if d.instance == nil ||
-		d.instance.Spec.KubeObjectProtection == nil ||
-		d.instance.Spec.KubeObjectProtection.RecipeRef == nil {
-		return false
-	}
-
-	if d.instance.Spec.KubeObjectProtection.RecipeRef.Name != recipecore.VMRecipeName {
-		return false
-	}
-
-	return true
-}
-
 func (d *DRPCInstance) isPreparingForFinalSync(clusterName string) bool {
 	vrg := d.getCleanupSecondaryVRG(clusterName)
 	if vrg == nil {
@@ -3484,7 +3470,7 @@ func (d *DRPCInstance) isSourceVRGForAction(clusterName string) bool {
 // discovered application
 // garbage collection (GC) based on the discovered VM recipe and the VRG's auto-cleanup status.
 func (d *DRPCInstance) setDiscoveredAppGCProgression(clusterName string) {
-	if d.isVMRecipeInUse() {
+	if rmnutil.IsVMRecipe(d.instance.Spec.KubeObjectProtection) {
 		switch {
 		case d.isPreparingForFinalSync(clusterName): // for relocation only
 			d.log.V(1).Info("Setting progression - PreparingFinalSync")
@@ -3780,7 +3766,7 @@ func (d *DRPCInstance) updateVRGStaticIPTranslationSpec(
 func (d *DRPCInstance) shouldInjectStaticIPTranslationSpec(
 	vrg *rmn.VolumeReplicationGroup,
 ) (bool, string) {
-	if !d.isVMRecipeInUse() {
+	if !rmnutil.IsVMRecipe(d.instance.Spec.KubeObjectProtection) {
 		return false, "VM recipe not in use"
 	}
 
@@ -3801,7 +3787,7 @@ func (d *DRPCInstance) shouldInjectStaticIPTranslationSpec(
 // restore on secondary clusters and should not remain configured on the
 // promoted primary after failover/relocation.
 func (d *DRPCInstance) ResetVMStaticIPSpecOnPrimary(clusterName string) error {
-	if !d.isVMRecipeInUse() {
+	if !rmnutil.IsVMRecipe(d.instance.Spec.KubeObjectProtection) {
 		return nil
 	}
 
