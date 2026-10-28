@@ -342,6 +342,10 @@ func (v *VRGInstance) buildProtectedPVCForPVC(
 		return nil, false, true
 	}
 
+	if skip, _ := isPVCDeletedAndNotProtected(&pvc, volsync.PVCFinalizerProtected, v.log); skip {
+		return nil, false, true
+	}
+
 	err := util.NewResourceUpdater(&pvc).
 		AddFinalizer(volsync.PVCFinalizerProtected).
 		AddLabel(util.LabelOwnerNamespaceName, v.instance.Namespace).

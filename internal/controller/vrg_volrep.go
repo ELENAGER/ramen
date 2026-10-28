@@ -567,12 +567,12 @@ func skipPVC(pvc *corev1.PersistentVolumeClaim, log logr.Logger) (bool, string) 
 		return true, msg
 	}
 
-	return isPVCDeletedAndNotProtected(pvc, log)
+	return isPVCDeletedAndNotProtected(pvc, PvcVRFinalizerProtected, log)
 }
 
-func isPVCDeletedAndNotProtected(pvc *corev1.PersistentVolumeClaim, log logr.Logger) (bool, string) {
+func isPVCDeletedAndNotProtected(pvc *corev1.PersistentVolumeClaim, finalizer string, log logr.Logger) (bool, string) {
 	// If PVC deleted but not yet protected with a finalizer, skip it!
-	if !slices.Contains(pvc.Finalizers, PvcVRFinalizerProtected) && rmnutil.ResourceIsDeleted(pvc) {
+	if !slices.Contains(pvc.Finalizers, finalizer) && rmnutil.ResourceIsDeleted(pvc) {
 		log.Info("Skipping PVC, as it is marked for deletion and not yet protected")
 
 		msg := "Skipping pvc marked for deletion"
