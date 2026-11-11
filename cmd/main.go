@@ -42,6 +42,7 @@ import (
 	controllers "github.com/ramendr/ramen/internal/controller"
 	argocdv1alpha1hack "github.com/ramendr/ramen/internal/controller/argocd"
 	rmnutil "github.com/ramendr/ramen/internal/controller/util"
+	ramenmanager "github.com/ramendr/ramen/internal/manager"
 	recipe "github.com/ramendr/recipe/api/v1alpha1"
 	virtv1 "kubevirt.io/api/core/v1"
 	// +kubebuilder:scaffold:imports
@@ -130,15 +131,6 @@ func configureController(ramenConfig *ramendrv1alpha1.RamenConfig) error {
 	}
 
 	return nil
-}
-
-func newManager(options *ctrl.Options) (ctrl.Manager, error) {
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), *options)
-	if err != nil {
-		return mgr, fmt.Errorf("starting new manager failed %w", err)
-	}
-
-	return mgr, nil
 }
 
 func setupReconcilers(mgr ctrl.Manager, ramenConfig *ramendrv1alpha1.RamenConfig) {
@@ -275,7 +267,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	mgr, err := newManager(ctrlOptions)
+	mgr, err := ramenmanager.NewManager(ctrl.GetConfigOrDie(), *ctrlOptions, controllers.ControllerType)
 	if err != nil {
 		setupLog.Error(err, "unable to Get new manager")
 		os.Exit(1)
